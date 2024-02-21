@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kamera ile QR Kod Okuma</title>
+    <style>
+        #kamera {
+            width: 50%;
+            border: 1px solid black;
+        }
+        #qrSonuc {
+            margin-top: 20px;
+            font-size: 18px;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+
+<video id="kamera" autoplay></video>
+<div id="qrSonuc"></div>
+
+<script src="jsQR.js"></script> <!-- jsQR kütüphanesini buraya ekleyin -->
+<script>
+    let video = document.getElementById('kamera');
+
+    function kameraAc() {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function(stream) {
+                video.srcObject = stream;
+                video.setAttribute("playsinline", true); // iOS cihazlarda tam ekranı önle
+                video.play();
+                qrOku();
+            }).catch(function(err) {
+                console.log(err);
+            });
+    }
+
+    function qrOku() {
+        let canvasElement = document.createElement('canvas');
+        let context = canvasElement.getContext('2d');
+
+        // Video akışını belirli aralıklarla kontrol edin
+        requestAnimationFrame(function checkFrame() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvasElement.height = video.videoHeight;
+                canvasElement.width = video.videoWidth;
+                context.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                let imageData = context.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                let code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+
+                if (code) {
+                    document.getElementById('qrSonuc').textContent = `QR Kod: ${code.data}`;
+                    // QR kod okunduğunda video akışını durdurabilirsiniz
+                    // video.srcObject.getTracks().forEach(track => track.stop());
+                } else {
+                    requestAnimationFrame(checkFrame);
+                }
+            } else {
+                requestAnimationFrame(checkFrame);
+            }
+        });
+    }
+
+    window.addEventListener('load', kameraAc);
+</script>
+
+</body>
+</html>
